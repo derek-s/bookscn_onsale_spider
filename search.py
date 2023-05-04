@@ -1,12 +1,12 @@
 from pymongo import MongoClient
 
-DB_HOSTS = "192.168.50.50"
-DB_PORT = 27017
-DB_USERNAME = "librarian"
-DB_PWD = "123456"
+DB_HOSTS = ""
+DB_PORT = 
+DB_USERNAME = ""
+DB_PWD = ""
 
-client = MongoClient(host=DB_HOSTS, port=DB_PORT, username=DB_USERNAME, password=DB_PWD, authSource="Library")
-db = client.get_database("Library")
+client = MongoClient(host=DB_HOSTS, port=DB_PORT, username=DB_USERNAME, password=DB_PWD, authSource="")
+db = client.get_database("")
 collection = db.books
 
 
