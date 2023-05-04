@@ -27,6 +27,7 @@ def dban(isbn):
     # 用户名密码方式
 
     s = requests.Session()
+    s.keep_alive = False
     retries = Retry(total=10,backoff_factor=1,status_forcelist=[500,502,503,504])
 
     s.mount("http://", HTTPAdapter(max_retries=retries))
@@ -67,14 +68,14 @@ def dban(isbn):
     #print(detailPage.text)
     try:
         rating = soup.select_one("div#interest_sectl > div > div.rating_self.clearfix > strong").get_text().replace(" ", "")
-        print(rating)
+        # print(rating)
         if(rating == ""):
             rating = "0.0"
         print("DRating: " + str(rating))
         s.close()
         
     except Exception as e:
-        print("Error")
+        print("douban Error")
         try:
             error = soup.select_one("div#exception > ul > li").get_text()
             print(error)
@@ -82,10 +83,15 @@ def dban(isbn):
 
         except:
             try:
+                title = soup.title.string
+                if(title == "页面不存在"):
+                    print("404 Page Not Found")
+                    return 0.0
                 error = soup.select_one("h1").get_text()
+                
                 print(error)
                 if(error == "登录跳转"):
-                    time.sleep(3)
+                    time.sleep(1)
                     s.close()
                     rating = dban(isbn)
                     
@@ -99,4 +105,4 @@ def dban(isbn):
                 s.close()
                 rating = dban(isbn)
     time.sleep(random.randint(2,3))
-    return rating
+    return float(rating)
