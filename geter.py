@@ -16,9 +16,14 @@ while True:
         continue
 
     print(task)
-    rating = dban(task)
+    finder = collection.find_one({
+        "isbn": task
+    })
 
-    b = collection.find_one({"isbn": task})
-    id = {"_id": b["_id"]}
-    collection.update_one(id, {"$set": {"rating":  rating}})
-
+    if(finder["rating"] == ""):
+        rating = dban(task)
+        b = collection.find_one({"isbn": task})
+        id = {"_id": b["_id"]}
+        collection.update_one(id, {"$set": {"rating":  rating}})
+    else:
+        print("repeated task")
