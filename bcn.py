@@ -168,7 +168,7 @@ def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
 if __name__ == "__main__":
     
 
-    avid = 
+    avid = 0
 
     tunnel = ""
 
