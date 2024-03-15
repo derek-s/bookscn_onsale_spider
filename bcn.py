@@ -55,12 +55,12 @@ def get_maxpagenum(firsturl, proxy=None):
 
 
 def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
-
+    
     s = requests.session()
     s.mount('http://', HTTPAdapter(max_retries=20))
     s.mount('https://', HTTPAdapter(max_retries=20))
 
-    r = redis.StrictRedis(host="", port=6379, charset="utf-8", decode_responses=True)
+    r = redis.StrictRedis(host="127.0.0.1", port=6379, charset="utf-8", decode_responses=True)
 
     if(proxy):
         listPage = s.get(listurl, headers=get_header(), proxies=proxy).text
@@ -102,12 +102,13 @@ def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
 
                 isbn = xSoup.select_one("div#copyrightInfor > ul > li").get_text().split("：")[1]
 
-                if(SearchBook(isbn, title)): # 查询已有书库
+                sr = SearchBook(isbn, title)
+
+                if(sr == 0 or sr == 1): # 查询已有书库
 
                     count = collection.count_documents({"isbn": isbn})
                     if(count == 0):
                         today = datetime.datetime.today().strftime("%Y-%m-%d")
-
                         dbRow = {
                             "title": title,
                             "anthor": anthor,
@@ -118,20 +119,30 @@ def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
                             "detailLink": homeurl + detailLink,
                             "isbn": isbn,
                             "rating": "",
-                            "doubanLink": isbn,
+                            "doubanLink": "http://douban.com/isbn/"+isbn,
                             "addDate": today,
                             "updateDate": today,
-                            "frequency": 1
+                            "frequency": 1,
                         }
 
+                        if(sr == 0):
+                            dbRow["inlib"] = 0
+                            dbRow["suspected_title"] = 0
+                            print(title, anthor, publish, price, salePrice, "")
+                        if(sr == 1):
+                            dbRow["inlib"] = 1
+                            dbRow["suspected_title"] = 1
+                            print("--*-- Suspected purchase " + title + " --*--")
+                            print(title, anthor, publish, price, salePrice, "")
+
                         collection.insert_one(dbRow)
-                        print(title, anthor, publish, price, salePrice, "")
                         r.lpush("isbn", isbn)
                         time.sleep(random.randint(1,3))
                     else:
                         print("repeated isbn")
+
                 else:
-                    print("--*-- Purchased " + title + " --*--")
+                    print("--*-- Purchased " + title + " skip --*--")
             else:
 
                 finder = collection.find_one({"detailLink": homeurl + detailLink})
@@ -156,7 +167,11 @@ def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
 
 if __name__ == "__main__":
     
+
+    avid = 
+
     tunnel = ""
+
 
     username = ""
     password = ""
@@ -169,20 +184,6 @@ if __name__ == "__main__":
     urlHomePage = ""
     urlFirst = ""
     urlEnd = ""
-
-    # cid = {
-    #     "54000000": "小说",
-    #     "53000000": "文学",
-    #     "37000000": "历史",
-    #     "61000000": "哲学/宗教",
-    #     "62000000": "政治/军事",
-    #     "48000000": "社会科学",
-    #     "52000000": "文化",
-    #     "57000000": "艺术",
-    #     "34000000": "经济",
-    #     "64000000": "自然科学"
-    # }
-
 
     cid = {
         "54000000": "小说",
@@ -237,11 +238,6 @@ if __name__ == "__main__":
     f = 1
 
     for c in cid:
-
-        # if(c == "57000000"):
-        #     f = 42
-        # else:
-        #     f = 1
 
         firsturl = urlFirst + c + urlEnd +"1"
         maxpage = get_maxpagenum(firsturl)
