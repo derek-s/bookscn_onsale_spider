@@ -13,6 +13,7 @@ from requests.adapters import HTTPAdapter
 import time
 import datetime
 from search import SearchBook
+import os
 
 
 from bs4 import BeautifulSoup as bas
@@ -41,17 +42,50 @@ def get_maxpagenum(firsturl, proxy=None):
     s.mount('https://', HTTPAdapter(max_retries=20))
     
     if(proxy):
-        firstPage = s.get(firsturl, headers=get_header(), proxies=proxy).text
+        while True:
+            try:
+                req = s.get(firsturl, headers=get_header(), proxies=proxy)
+                if(req.status_code == 200):
+                    firstPage = req.text
+                    break
+                else:
+                    print("Error statue_code: " + str(req.status_code))
+                    time.sleep(2)
+                    continue
+
+            except Exception as e:
+                print(e)
+                print(datetime.datetime.now())
+                print("Error")
+                time.sleep(2)
+                continue
     else:
-        firstPage = s.get(firsturl, headers=get_header()).text
+        while True:
+            try:
+                req = s.get(firsturl, headers=get_header())
+                if(req.status_code == 200):
+                    firstPage = req.text
+                    break
+                else:
+                    print("Error statue_code: " + str(req.status_code))
+                    time.sleep(2)
+                    continue
+            except Exception as e:
+                print(e)
+                print(datetime.datetime.now())
+                print("Error")
+                time.sleep(2)
+                continue
+    if(firstPage != ""):
+        soup = bas(firstPage, "html5lib")
+        try:
+            maxPageNum = soup.select_one("div.p-skip > em > b").get_text()
+        except:
+            maxPageNum = 1
 
-    soup = bas(firstPage, "html5lib")
-    try:
-        maxPageNum = soup.select_one("div.p-skip > em > b").get_text()
-    except:
-        maxPageNum = 1
-
-    return maxPageNum
+        return maxPageNum
+    else:
+        print("Error: firstPage is null")
 
 
 def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
@@ -63,9 +97,39 @@ def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
     r = redis.StrictRedis(host="127.0.0.1", port=6379, charset="utf-8", decode_responses=True)
 
     if(proxy):
-        listPage = s.get(listurl, headers=get_header(), proxies=proxy).text
+        while True:
+            try:
+                req = s.get(listurl, headers=get_header(), proxies=proxy)
+                if(req.status_code == 200):
+                    listPage = req.text
+                    break
+                else:
+                    print("Error statue_code: " + str(req.status_code))
+                    time.sleep(2)
+                    continue
+            except Exception as e:
+                print(e)
+                print(datetime.datetime.now())
+                print("Error")
+                time.sleep(2)
+                continue
     else:
-        listPage = s.get(listurl, headers=get_header()).text
+        while True:
+            try:
+                req = s.get(listurl, headers=get_header())
+                if(req.status_code == 200):
+                    listPage = req.text
+                    break
+                else:
+                    print("Error statue_code: " + str(req.status_code))
+                    time.sleep(2)
+                    continue
+            except Exception as e:
+                print(e)
+                print(datetime.datetime.now())
+                print("Error")
+                time.sleep(2)
+                continue
     
     print(cid + " Page: " + str(pagenum))
 
@@ -75,28 +139,54 @@ def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
     for etb in tb:
         flag = True
         title = etb.select_one("div.name.fl > a").get_text().strip()
-        anthor = etb.select_one("div.author.fl").get_text().strip()
+        author = etb.select_one("div.author.fl").get_text().strip()
         publish = etb.select_one("div.publish.fl").get_text().strip()
-        price = etb.select_one("div.price.fl > span").get_text().replace("¥", "").  strip()
-        salePrice = etb.select_one("div.salePrice.fl > span").get_text().replace("  ¥", "").strip()
+        price = float(etb.select_one("div.price.fl > span").get_text().replace("¥", "").  strip())
+        salePrice = float(etb.select_one("div.salePrice.fl > span").get_text().replace("¥", "").strip())
 
         detailLink = etb.select_one("div.name.fl > a")["href"]
 
-        # for bx in blackListTitle:
-        #     if(bx in title):
-        #         print("black list")
-        #         flag = False
-        #         break
-    
         if(flag):
-            count = collection.count_documents({"detailLink": homeurl + detailLink})
+            query = {"detailLink": homeurl + detailLink}
+            book = collection.find_one(query)
+            count = collection.count_documents(query)
 
             if(count == 0):
 
                 if(proxy):
-                    detailPage = s.get(homeurl + detailLink, headers=get_header(),  proxies=proxy).text
+                    while True:
+                        try:
+                            req = s.get(homeurl + detailLink, headers=get_header(),  proxies=proxy)
+                            if(req.status_code == 200):
+                                detailPage = req.text
+                                break
+                            else:
+                                print("Error statue_code: " + str(req.status_code))
+                                time.sleep(2)
+                                continue
+                        except Exception as e:
+                            print(e)
+                            print(datetime.datetime.now())
+                            print("Error")
+                            time.sleep(2)
+                            continue
                 else:
-                    detailPage = s.get(homeurl + detailLink, headers=get_header()).text
+                    while True:
+                        try:
+                            req = s.get(homeurl + detailLink, headers=get_header())
+                            if(req.status_code == 200):
+                                detailPage = req.text
+                                break
+                            else:
+                                print("Error statue_code: " + str(req.status_code))
+                                time.sleep(2)
+                                continue
+                        except Exception as e:
+                            print(e)
+                            print(datetime.datetime.now())
+                            print("Error")
+                            time.sleep(2)
+                            continue
 
                 xSoup = bas(detailPage, "html5lib")
 
@@ -108,12 +198,36 @@ def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
 
                     count = collection.count_documents({"isbn": isbn})
                     if(count == 0):
+
+
+                        # 下载封面和采集简介信息
+                        intro = xSoup.select("div#brief > p")
+                        if(len(intro) > 0):
+                            intro_text = intro[0].get_text()
+                        else:
+                            intro_text = ""
+                        try:
+                            imgDom = xSoup.select("div#popbigpic > a > img")[0]["src"]
+                        except:
+                            imgDom = ""
+                        if(len(imgDom) > 0):
+                            if("http" in imgDom):
+                                imgUrl = imgDom
+                            else:
+                                temp = list(imgDom)
+                                temp.insert(0, "http:")
+                                imgUrl = "".join(temp)
+                            imgName = isbn + ".jpg"
+                            coverName = downloadCover(imgUrl, imgName, get_header(), None)
+                        else:
+                            coverName = "default.jpg"
+                        
                         today = datetime.datetime.today().strftime("%Y-%m-%d")
                         dbRow = {
                             "title": title,
-                            "anthor": anthor,
+                            "author": author,
                             "publish": publish,
-                            "category": cid,
+                            "category": cid.split("-")[0],
                             "price": price,
                             "salePrice": salePrice,
                             "detailLink": homeurl + detailLink,
@@ -123,21 +237,24 @@ def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
                             "addDate": today,
                             "updateDate": today,
                             "frequency": 1,
+                            "cover_name": coverName,
+                            "intro": intro_text,
+                            "t_category": cid.split("-")[1]
                         }
 
                         if(sr == 0):
                             dbRow["inlib"] = 0
                             dbRow["suspected_title"] = 0
-                            print(title, anthor, publish, price, salePrice, "")
+                            print(title, author, publish, price, salePrice, "")
                         if(sr == 1):
                             dbRow["inlib"] = 1
                             dbRow["suspected_title"] = 1
                             print("--*-- Suspected purchase " + title + " --*--")
-                            print(title, anthor, publish, price, salePrice, "")
+                            print(title, author, publish, price, salePrice, "")
 
                         collection.insert_one(dbRow)
                         r.lpush("isbn", isbn)
-                        time.sleep(random.randint(1,3))
+                        time.sleep(random.randint(1,2))
                     else:
                         print("repeated isbn")
 
@@ -156,14 +273,41 @@ def get_bookmeta(listurl, homeurl, cid, pagenum, proxy=None):
 
                 collection.update_one(
                     id, {"$set": {
+                            "salePrice": salePrice,
                             "updateDate": today,
                             "frequency": frequency
                             }
                         }
                 )
+                print(book["isbn"] + " in base, update info")
 
-                print("in base, update info")
+def downloadCover(imgUrl, imgName, headers, proxy):
 
+    s = requests.session()
+
+    if(not os.path.isfile("Cover/"+imgName)):
+        while True:
+            try:
+                if(proxy):
+                    img = s.get(imgUrl, headers=headers, proxies=proxy, timeout=3)
+                else:
+                    img = s.get(imgUrl, headers=headers, timeout=3)
+                if(len(img.content) > 2000):
+                    open("cover/"+imgName, "wb").write(img.content)
+                else:
+                    print("Cover broke")
+                    imgName = "default.jpg"
+                break
+            except Exception as e:
+                print(e)
+                print(datetime.datetime.now())
+                print("Error")
+                time.sleep(2)
+                continue
+    else:
+        print(imgName + " is exits")
+    
+    return imgName
 
 if __name__ == "__main__":
     
@@ -182,13 +326,13 @@ if __name__ == "__main__":
     }
 
     urlHomePage = ""
-    urlFirst = ""
+    urlFirst = "" + str(avid) + ""
     urlEnd = ""
 
     cid = {
-        "54000000": "小说",
-        "53000000": "文学",
-        "37000000": "历史",
+        "54000000": "小说-小说",
+        "53000000": "文学-文学",
+        "37000000": "历史-历史",
         "61111600": "哲学/宗教-哲学理论",
         "61111800": "哲学/宗教-中国古代哲学",
         "61111700": "哲学/宗教-哲学知识读物",
@@ -215,7 +359,7 @@ if __name__ == "__main__":
         "48180000": "社会科学-文化人类学",
         "48131300": "社会科学-心理学",
         "48150000": "社会科学-社会学",
-        "48150000": "社会科学-社会学理论",
+        "48151400": "社会科学-社会学理论",
         "57110000": "艺术-艺术理论",
         "57191600": "艺术-设计理论",
         "57211400": "艺术-理论/欣赏",
@@ -231,7 +375,8 @@ if __name__ == "__main__":
         "34270000": "经济-国际经济",
         "34190000": "经济-经济史",
         "34211400": "经济-政治经济学",
-        "34210000": "经济-经济学理论"
+        "34210000": "经济-经济学理论",
+        "52000000": "文化-文化"
     }
 
 
@@ -239,7 +384,7 @@ if __name__ == "__main__":
 
     for c in cid:
 
-        firsturl = urlFirst + c + urlEnd +"1"
+        firsturl = urlFirst + c + urlEnd + "1"
         maxpage = get_maxpagenum(firsturl)
         print(maxpage)
         
